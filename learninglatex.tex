@@ -1,0 +1,450 @@
+% Jennifer Pan
+% Math Prefresher
+% Fall 2010
+
+% This file walks you through some basic things with LaTex
+% Thanks to Patrick Lam and Maya Sen for letting me borrow their materials
+
+% COMMANDS: You have to tell Latex to do everything with commands, which always begin with \
+
+% Save your file in a directory as a .tex file
+% On your .tex file, compile using PDFLaTeX (usually a button or command on your editor)
+% Output files will be in the same directory as your .tex file.
+
+% If you get an error message, something is wrong in your code. Fix errors before they pile up!
+% GOOGLE if you have a question!
+% Use Wikipedia, http://en.wikibooks.org/wiki/LaTeX/Formatting is great!
+
+\documentclass[10pt]{article}
+	% basic article document class
+	% can change font size, e.g., 12pt
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+	% packages that allow mathematical formatting
+
+\usepackage{graphicx}
+	% package that allows you to include graphics
+
+\usepackage{setspace}
+	% package that allows you to change spacing
+
+\onehalfspacing
+	% \onehalfspacing creates 1.5 spaced; \doublespacing for double spaced; default is single space
+
+\usepackage{fullpage}
+	% package that specifies normal margins
+
+\title{Government Dept Math PreFresher}
+\author{Jennifer Pan}
+\date{August, 2010}
+	% if you omit this command, the current date is automatically included
+
+\begin{document}
+	% line of code telling latex that your document is beginning
+
+\maketitle
+	% Put this following after \begin{document}. If you don't, your title, author, date won't show up
+
+\section*{DAY 1: August 23, 2010}
+	% Create unnumbered section by adding a * after \section
+
+This is my line. \\
+
+This is my new line after a skipped line.
+
+New paragraph: it's automatically indented...as long as I can write enough words to go to the next line.
+
+\noindent This is my new non-indented line.
+
+\paragraph{A)} Text for Paragraph (A) here.
+
+\subparagraph{i)} Text for Sub-Paragraph (A)(i) here.
+
+\subparagraph{ii)} Text for Sub-Paragraph (A)(ii) here.
+
+\subsection{My First Numbered SubSection Title}
+
+\subsubsection{My First Numbered SubSubSection Title}
+	% There is no subsubsubsection
+
+\section*{DAY 2: August 24, 2010}
+
+\subsection*{Environments: Lists}
+	% List environment allows you to itemize or enumerate:
+	% Must always "\begin" and "\end" or else you'll get an error
+
+\noindent My favorite cities:
+\begin{itemize}
+\item New York
+\item Beijing
+\item Hong Kong
+\item Paris
+\end{itemize}
+	% itemize creates a bulleted list
+
+\noindent My favorite airlines:
+\begin{enumerate}
+\item Singapore Airlines
+\item Cathay Pacific
+\item Qatar Airways
+\item Qantas Airways
+\end{enumerate}
+	% enumerate creates a numbered list
+
+\subsection*{Environments: Math}
+
+This is a simple equation, $5 + 3 = \alpha$, which is easily written in line of text. \\
+	% Use $ $ to enclose in line math
+
+\noindent Examples of equations in the {\tt eqnarray} environment:
+\begin{eqnarray}
+.80 \cdot \frac{1}{2} & = & \frac{.80}{2} \\
+& = & .40
+\end{eqnarray}
+	% Don't leave any blank lines in eqnarray, or you'll get an error
+	% Go to next line using \\
+	% the "&" signs tell latex to align the equal signs 
+	% \frac{num}{dem} for fraction
+
+\begin{eqnarray*}
+\hat{\beta}_x = r_{xy|z} \left(\frac{s_y}{s_x} \right) \left(\frac{\sqrt{1-r^2_{yz}}}{\sqrt{1-r^2_{xz}}} \right)
+\mbox{ un-numbered equation}
+\end{eqnarray*}
+	% Get rid of equation number with * after "eqnarray"
+	% Greek symbols are relatively intuitive, \alpha, \beta, \gamma, \sigma
+	% Capital greek letters are \Gamma, \Delta, capital Greek letters that have the same appearance as some Latin letter, do not appear
+	% Subscript with _{stuff}, no need to use curly brackets if subscript is a single letter or symbol
+	% Superscript with ^{stuff}, no need to use curly brackets if superscript is a single letter or symbol
+	% Square root is \sqrt{}
+	% use \left( and \right) to size brackets to fit what inside, you can also use \Bigg( and \Bigg)
+	% to type normal, non-italicized, text in eqnarray use \mbox{stuff}
+
+\begin{eqnarray*}
+\textbf{A} = 
+\begin{pmatrix}
+a_{11} & a_{12} & a_{13} \\
+a_{21} & a_{22} & a_{23} \\
+a_{31} & a_{32} & a_{33} \\
+\end{pmatrix}\mbox{ matrix with rounded brackets}
+\end{eqnarray*}
+	% bold text using \textbf{stuff}
+	% put an environment pmatrix inside of another environment eqnarray
+
+\begin{eqnarray*}
+\lim_{n \to \infty} [\alpha y_n + \beta z_n] &=& \alpha \textbf{A} + \beta \textbf{B} \\
+\boldsymbol{\hat{\beta}} &=& (\mathbf{X^\prime X})^{-1} \mathbf{X^\prime y} \\
+f(x) &=& \frac{1}{\sigma \sqrt{2 \pi}} e^{\left( - \frac{(x -
+   \mu)^2}{2 \sigma^2} \right)}
+\end{eqnarray*}
+	% bold greek symbols using \boldsymbol{stuff}
+	% you can also bold greek symbols using \bm, if you install package "\usepackage{bm}"
+
+\section*{DAY 2: Homework Answers}
+\paragraph{A)} Try to create the following equations:
+
+\begin{enumerate}
+\item $\frac{5 + 6}{\alpha} = \beta^2$
+\item $Pr(-1.96 \leq Z \leq 1.96) = 0.95$
+\item $\hat{\beta}_x = r_{xy|z} \left(\frac{s_y}{s_x} \right) \left(\frac{\sqrt{1-r^2_{yz}}}{\sqrt{1-r^2_{xz}}} \right)$
+\item 
+\begin{eqnarray*}
+\frac{1}{n \sum_{i=1}^{n} x_i^2 - \left(\sum_{i=1}^{n} x_i \right)^2}
+\begin{pmatrix}
+\sum_{i=1}^{n} x_i^2 & -\sum_{i=1}^{n} x_i\\
+-\sum_{i=1}^{n} x_i & n\\
+\end{pmatrix} \\
+\end{eqnarray*}
+\end{enumerate}
+
+\paragraph{B)} Create a list (numbered) of your favorite foods.
+\begin{enumerate}
+\item My grandmother's cooking
+\item Street food, especially babi guling and chuar
+\item Cheese, especially soft stinky cheeses
+\end{enumerate}
+
+\paragraph{C)} Create a list (with bullets) of your preferred news sources
+\begin{itemize}
+\item NYTimes
+\item The New Yorker
+\item aldaily.com
+\item thesuperficial.com
+\end{itemize}
+
+\section*{DAY 3: Homework Answers}
+
+\paragraph{A)} Objects, Data Types, and Object Classes
+
+\begin{enumerate}
+\item Create a vector of integers from 1 to 20.  
+\item In one line of code, add 2, multiply by 5, take the square root, and then take the log of each element in the vector.
+\item Create a vector of your 5 favorite cities.
+\item Create a $3 \times 3$ matrix where each element of every column corresponds to the column number.
+\item Convert this matrix into a dataframe.
+\item Create a $3 \times 5 \times 2$ array of all 0s.
+\item Create a list containing your array, your dataframe and your two vectors. 
+\end{enumerate}
+
+\paragraph{Solution A)}
+\begin{verbatim}
+ans.1 <- 1:20
+ [1]  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20
+
+ans.2 <- log(sqrt((ans.1 + 2) * 5))
+ [1] 1.354025 1.497866 1.609438 1.700599 1.777674 1.844440 1.903331 1.956012
+ [9] 2.003667 2.047172 2.087194 2.124248 2.158744 2.191013 2.221326 2.249905
+[17] 2.276938 2.302585 2.326980 2.350240
+
+ans.3 <- c("New York", "Beijing", "Hong Kong", "Paris", "Shanghai")
+
+ans.4 <- matrix(c(1, 2, 3), ncol = 3, nrow = 3, byrow = T)
+     [,1] [,2] [,3]
+[1,]    1    2    3
+[2,]    1    2    3
+[3,]    1    2    3
+
+ans.5 <- as.data.frame(ans.4)
+  V1 V2 V3
+1  1  2  3
+2  1  2  3
+3  1  2  3
+
+ans.6 <- array(0, dim = c(3, 5, 2))
+, , 1
+     [,1] [,2] [,3] [,4] [,5]
+[1,]    0    0    0    0    0
+[2,]    0    0    0    0    0
+[3,]    0    0    0    0    0
+
+, , 2
+     [,1] [,2] [,3] [,4] [,5]
+[1,]    0    0    0    0    0
+[2,]    0    0    0    0    0
+[3,]    0    0    0    0    0
+
+ans.7 <- list(ans.6, ans.5, ans.3, ans.2)
+
+\end{verbatim}
+
+
+\paragraph{B)} Combining, Indexing, and Subsetting
+
+\begin{enumerate}
+\item Create a $10 \times 3$ (10 rows, 3 columns) matrix where each element of every row corresponds to the row number.
+\item Create another matrix, $50 \times 3$ (50 rows, 3 columns), where the first column contains $4$'s, the second $5$'s, and third $7$'s
+\item Combine the two matrices
+\item Name each column of your matrix \texttt{G1}, \texttt{G2}, and \texttt{G3}
+\item Create a new dataset where all observations in column 3, \texttt{G3}, is less than or equal to 6
+\item Write this new smaller dataset as a separate file into your working directory in any format (i.e. .csv, .dta, .txt)
+\item Store the large dataset and the new smaller dataset in a list with appropriate names
+\end{enumerate}
+
+\paragraph{Solution B)}
+\begin{verbatim}
+##1
+mat1 <- matrix(1:10, nrow=10, ncol=3)
+
+##2
+mat2 <- matrix(c(4,5,3), nrow=50, ncol=3, byrow=T)
+
+##3
+my.final <- rbind(mat1, mat2)
+
+##4
+colnames(my.final) <- c("G1", "G2", "G3")
+
+##5
+my.new <- my.final[my.final[,3] <= 6,]
+
+##6
+write.csv(my.new, file = "mynew.csv")
+
+##7
+my.list <- list(large = my.final, small = my.new)
+\end{verbatim}
+
+
+\paragraph{C)} Data and Common Functions
+
+\begin{enumerate}
+\item Load the \texttt{cambridge} dataset again. Find the mean, median, standard deviation, and 20th and 80th percent quantiles of the income variable.
+\item How many observations are there in this dataset?
+\item What are the average loan amount, income, and loan rate?
+\item Which income-sex observation had the highest interest rate in the dataset?
+\item Do more males or females have rates greater than 5?
+\end{enumerate}
+
+\paragraph{Solution C)}
+\begin{verbatim}
+##1
+mean(loans$income)
+[1] 165.3897
+
+median(loans$income)
+[1] 120
+
+sd(loans$income)
+[1] 215.5218
+
+quantile(loans$income, probs = c(0.2, 0.8))
+  20%   80% 
+ 81.6 186.0 
+
+##2
+nrow(loans)
+[1] 929
+
+##3
+colMeans(loans[c(1,6,7)])
+    amount     income       rate 
+304.335845 165.389666   5.520786
+
+##4
+loans[loans$rate == max(loans$rate), c("income", "sex")]
+    income  sex
+658    200 Male
+
+##5
+tally <- table(loans$sex[loans$rate > 5])
+names(tally)[tally == max(tally)]
+\end{verbatim}
+
+\section*{DAY 5: Homework Answers}
+
+\paragraph{A)} Figures
+\begin{enumerate}
+\item In R, load the \texttt{ccarddata} dataset. Create a scatterplot where \texttt{age} is on the x axis, \texttt{credit card expend} is on the y axis.
+\item Label the x and y axis of this plot, and add the title "Scatterplot".
+\item Create a histogram of \texttt{credit card expend}, add color to the plot, label all axis, and include a title.
+\item Add a dashed red line at the mean \texttt{credit card expend} to the histogram.
+\item Add a legend to the histogram to explain this dashed red line.
+\item Put the scatterplot and histogram side by side (no need to include the dashed mean line or legend).
+\item Save this figure into your working directory as "myfigure.pdf".
+\item Add "myfigure.pdf" to your \LaTeX  document.
+\end{enumerate}
+
+\paragraph{Solution A)}
+\begin{verbatim}
+##1
+library(foreign)
+ccarddata <- read.dta("ccarddata.dta")
+
+plot(x=ccarddata$age, y=ccarddata$credit_card_expend)
+
+##2
+plot(x=ccarddata$age, y=ccarddata$credit_card_expend, xlab = "Age", ylab = "Credit Card Expenditure",
+   main = "Scatterplot")
+
+##3
+hist(ccarddata$credit_card_expend, col = "gold", xlab = "CC Expenditure", ylab = "Frequency", 
+	main = "Credit Card Expenditures")
+
+##4
+abline(v = mean(ccarddata$credit_card_expend), col = "red", lty="dashed", lwd=2)
+
+##5
+legend(x="topright", legend=c("mean"), col="red", lty="dashed", lwd=2)
+
+##6
+par(mfrow = c(1, 2))
+plot(x=ccarddata$age, y=ccarddata$credit_card_expend, xlab = "Age", ylab = "Credit Card Expenditure",
+   main = "Scatterplot")
+hist(ccarddata$credit_card_expend, col = "gold", xlab = "CC Expenditure", ylab = "Frequency", 
+	main = "Credit Card Expenditures")
+
+##7
+pdf(file= "myfigure.pdf")
+par(mfrow = c(1, 2))
+plot(x=ccarddata$age, y=ccarddata$credit_card_expend, xlab = "Age", ylab = "Credit Card Expenditure",
+   main = "Scatterplot")
+hist(ccarddata$credit_card_expend, col = "gold", xlab = "CC Expenditure", ylab = "Frequency", 
+	main = "Credit Card Expenditures")
+dev.off()
+\end{verbatim}
+
+\section*{DAY 7: Figures, Tables, Verbatim}
+% Figure environment allows you to include graphics, e.g., plots, pictures, etc.
+% Uses the graphicx package, which we included earlier
+
+\subsection*{Figures}
+
+\begin{figure}[!htp]
+\begin{center}
+	% use the "begin{figure} command and then center it
+\includegraphics[scale=.50]{myfigure.pdf}
+\caption{\textit{Scatterplot and Histogram}}
+\label{MyFigure}
+\end{center}
+\end{figure}
+	% We can also reference figures in the text of the document, add \label after caption
+
+In Figure \ref{MyFigure}, we can see that...
+	% You may have to compile more than once to get the references to show up correctly
+
+\subsection*{Tables}
+\begin{table}[!htp]
+	% [!htp] forces latex to put the table  exactly here;
+	% if that's not possible, then latex will put the table at the top then one the same page
+\begin{center}
+	% center the table
+\begin{tabular}{l|rrrr||c}
+	% use the tabular command, specificy the number of (left- right- and center-justified) columns
+	% the "|" command asks latex to include a vertical line
+  & West Coast & South & East Coast & Midwest & Total\\
+  	% use "&" to specify column breaks, number of breaks must match colums specified
+\hline
+	% horizontal line
+  Men & 3 & 3 & 3 & 0 & 9 \\
+  Women & 4 & 1 & 3 & 1 & 9 \\
+\hline
+  Total & 7 & 4 & 6 & 1 & 18 \\
+\end{tabular}
+\end{center}
+\caption{\textit{Geographic distribution of the contestants on Top Chef}}
+\label{TopChef}
+	% To reference your table in the text of the document, add \label after \caption:
+\end{table}
+
+In Table \ref{TopChef}, we can see that...
+	% You may have to compile more than once to get the references to show up correctly
+
+% Use xtable() in R to make tables more easily
+
+\subsection*{Verbatim}
+% verbatim environment allows you to easily paste R code, without getting errors
+
+\begin{verbatim}
+LaTeX will copy everything in the verbatim environment exactly, rather than interpret it as code.
+For example:
+\begin{itemize}
+is typed out exactly and does begin a list
+Line skips when you press enter
+\end{verbatim}
+
+\section*{DAY 7: Homework Answers}
+\paragraph{A)} Table
+In \LaTeX, create a table with information on three Gov department professors. The first column contains their name, the second their office location, and the third column their phone number. Your table should have three rows.
+
+\begin{table}[!htp]
+\begin{center}
+\begin{tabular}{c|c|c}
+Name & Office & Phone Number\\
+\hline
+Prof1 & Office1 & Phone1\\
+\hline
+Prof2 & Office2 & Phone2\\
+\hline
+Prof3 & Office3 & Phone3\\
+\hline
+Prof4 & Office4 & Phone4\\
+\hline
+Prof5 & Office5 & Phone5\\
+\hline
+\end{tabular}
+\end{center}
+\end{table}
+
+
+\end{document}
+	% line of code telling latex that your document is ending
