@@ -1,0 +1,1299 @@
+/* PROBS.SRC   Probability Distributions and related functions:
+** Normal, Students T, Chi square, F, Poisson, Binomial,
+** Negative Binomial and Gamma
+** Probability Density functions (PDFx), Cumulative Density Function (CDFx)
+** Complement of CDF (CDFxC), Inverse of CDF (INVCDFx), Random numbers (RNDx)
+**  x = N (Normal), T (Students T), CHI (Chi square), F (F ratio),
+**      P (Poisson), B (Binomal), NB (Negative Binomial), GAM (Gamma)
+** David Baird AgResearch PO Box 60 Lincoln NZ
+**
+** Procedure             Definition                                       Line
+**===========================================================================*
+** x = invcdfn(y)          Inverse Normal CDF                              47
+** d = pdft(t,n)           Students T PDF                                  87
+** y = cdft(t,n)           Students T CDF                                 111
+** x = invcdft(y,n)        Inverse of Students T CDF                      129
+** x = rndt(r,c,n)         Random numbers from Students T distribution    177
+** d = pdff(t,n1,n2)       F PDF                                          197
+** y = cdff(x,n1,n2)       F CDF                                          233
+** x = invcdff(y,n1,n2)    Inverse of F CDF                               252
+** x = rndf(r,c,n1,n2)     Random numbers from F distribution             314
+** d = pdfchi(t,n)         Chi square PDF                                 340
+** y = cdfchi(x,n)         Chi square CDF                                 366
+** x = invcfchi(y,n)       Inverse of Chi square CDF                      389
+** x = rndchi(r,c,n)       Random numbers from Chi square distribution    437
+** d = pdfb(t,p,n)         Binomial PDF                                   457
+** y = cdfb(x,p,n)         Binomial CDF                                   489
+** y = cdfbc(x,p,n)        Complement of Binomial CDF                     534
+** x = invcdfb(y,p,n)      Inverse of Binomial CDF                        556
+** x = rndb(r,c,p,n)       Random numbers from Binomial distribution      610
+** d = pdfp(x,m)           Poisson PDF                                    649
+** y = cdfp(x,m)           Poisson CDF                                    680
+** y = cdfpc(x,m)          Complement of Poisson CDF                      714
+** x = invcdfp(y,m)        Inverse of Poisson CDF                         735
+** x = rndp(r,c,m)         Random numbers from Poisson distribution       781
+** d = pdfnb(x,p,n)        Negative Binomial PDF                          960
+** y = cdfnb(x,p,n)        Negative Binomial CDF                         1022
+** y = cdfnbc(x,p,n)       Complement of Negative Binomial CDF           1067
+** x = invcdfnb(y,p,n)     Inverse of Negative Binomial CDF              1089
+** x = rndnb(r,c,p,n)      Random numbers from Negative Binomial dist.   1142
+** d = pdfgam(x,n)         Standardized Gamma PDF                        1194
+** p = cdfgamc(t,n)        Complement of Standardized Gamma CDF          1216
+** x = invcdfg(y,n)        Inverse of Standardized Gamma CDF             1232
+** x = rndgam(nr,nc,a,b,c) Random numbers from Gamma distribution        1279
+**===========================================================================*
+Note: Missing functions are already Gauss Intrinsic functions               */
+
+/* INVCDFN - Calculates the inverse of the Normal cdf
+**
+** Usage:  z = invcdfn(p)
+**
+** Input:  p - N x M matrix of probabilities (0 < p < 1)
+**
+** Output: z - N x M matrix of normal scores s.t. prob(N < z) = p
+**
+** Note:   Uses approximation for initial value and then iterates for accuracy
+*/
+
+proc invcdfn(p) ;
+     local tol,t,n,d,converge,k,z,f,df ;
+     if not (p > 0 and p < 1) ;
+        errorlog "ERROR: INVCDFN - P not in range (0,1)" ;
+        retp(error(99)) ;
+     endif ;
+     tol = 1e-6 ;
+     /* Initial approximation of z */
+     t = sqrt(-2*ln(abs((p.>0.5) - p)));
+     n = 2.515517 + t.*(0.802853 + t.*0.010328) ;
+     d = 1 + t.*(1.432788 + t.*(0.189269 + t.*0.001308)) ;
+     z = t - (n./d) ;
+     z = (p.>0.5).*z - (p.<=0.5).*z ;
+     /* Newton-Raphson adjustment of approximation to give exact value */
+     clear converge,k ;
+     do until(converge or k > 50) ;
+         f = cdfn(z) ;
+        df = missrv(miss(pdfn(z),0),tol^2) ;
+        n = z - (f - p)./df ;
+        converge = abs(z - n) < tol ;
+        z = n ;
+        k = k + 1 ;
+     endo ;
+     if not converge ;
+        errorlog "WARNING: INVCDFN has not converged" ;
+     endif ;
+     retp(z) ;
+endp ;
+
+/* PDFT - Students t Probability Density function
+**
+** Usage:  d = pdft(x,n)
+**
+** Input:  X - matrix of T values
+**         N - matrix of degrees of freedom for t distribution
+**
+** Output: D - matrix of density of T(N) function at X
+*/
+
+proc pdft(x,n) ;
+     if not(n > 0) ;
+        errorlog "ERROR: PDFT - Degrees of Freedom are not positive" ;
+        retp(error(99)) ;
+     endif ;
+    if n < 100 ;
+       retp(gamma((n+1)./2)./gamma(n./2)./sqrt(n.*pi).*
+            (1+(x^2)./n).^(-(n+1)./2)) ;
+    else ;
+       retp(exp(lnfact((n-1)./2)-lnfact(n./2-1)-ln(n.*pi)./2
+            -(n+1).*ln(1+(x^2)./n)./2)) ;
+    endif ;
+endp ;
+
+/* CDFT - Students t Probability Cumulative Density function
+**
+** Usage:  p = cdft(x,n)
+**
+** Input:  X - matrix of T values
+**         N - matrix of degrees of freedom for t distribution
+**
+** Output: P - matrix of probabilities P = Pr(x < X) where x ~ T(N)
+*/
+
+proc cdft(x,n) ;
+     if not(n > 0) ;
+        errorlog "ERROR: CDFT - Degrees of Freedom are not positive" ;
+        retp(error(99)) ;
+     endif ;
+     retp(1-cdftc(x,n)) ;
+endp ;
+
+/* INVCDFT - Students t Inverse Cumulative Distribution function
+**
+** Usage:  x = invcdft(p,n)
+**
+** Input:  P - matrix of percentage points ( 0 < p < 1 )
+**         N - matrix of degrees of freedom for t distribution
+**
+** Output: X - matrix of critical T values st Pr(x < X) = P and x ~ T(N)
+**
+** Notes:  Uses initial Normal approximation and then iterates for accuracy
+*/
+
+proc invcdft(p,n) ;
+     local converge,tol,k,t,d,z,x0,x1,f0,df0 ;
+     if not(p > 0 and p < 1) ;
+        errorlog "ERROR: INVCDFT - P not in range (0,1)" ;
+        retp(error(99)) ;
+     endif ;
+     if not(n > 0) ;
+        errorlog "ERROR: INVCDFT - Degrees of Freedom are not positive" ;
+        retp(error(99)) ;
+     endif ;
+     t = sqrt(-2.*ln(abs((p.>0.5) - p))); /* Use normal approx to start */
+     z = 2.515517 + t.*(0.802853 + t.*0.010328) ;
+     d = 1 + t.*(1.432788 + t.*(0.189269 + t.*0.001308)) ;
+     z = t - (z./d) ;
+     d = sqrt(0.25.*(n.<=2) + (1 - 2./n).*(n.>2)) ;
+     x0 = ((p.>0.5).*z - (p.<=0.5).*z)./d ;
+     if not (n > 1) ; /* Use Cauchy distribution for n = 1 */
+        x0 = x0.*(n.>1) + tan(pi.*(p-0.5)).*(n.==1) ;
+     endif ;
+     tol = 1e-6 ;
+     p = 1 - p ;
+     clear converge,k ;
+     do until(converge or k > 50) ;
+         f0 = cdftc(x0,n) ;
+        df0 = missrv(miss(pdft(x0,n),0),tol) ;
+         x1 = x0 + (f0-p)./df0 ;
+         converge = abs(x0 - x1) < tol ;
+         x0 = x1 ;
+         k = k + 1 ;
+     endo ;
+     if not converge ;
+        errorlog "WARNING: INVCDFT has not converged" ;
+     endif ;
+     retp(x0) ;
+endp ;
+
+/* RNDT - Random numbers from a Students t Distribution
+**
+** Usage:  x = rndt(r,c,n)
+**
+** Input:  R - scalar of row size returned matrix
+**         C - scalar of Column size returned matrix
+**         N - matrix of degrees of freedom for t distribution
+**             (ExE conformable with RxC matrix)
+**
+** Output: X - R X C matrix of random numbers ~ T(N)
+*/
+
+proc rndt(r,c,n) ;
+     if not(n > 0) ;
+        errorlog "ERROR: RNDT - Degrees of Freedom are not positive" ;
+        retp(error(99)) ;
+     endif ;
+     retp(invcdft(rndu(r,c),n)) ;
+endp ;
+
+/* PDFF  - Probability Density function of F distribution
+**
+** Format: D = pdff(f,n1,n2)
+**
+** Input:  X  - R x C matrix of f ratio's (F > 0)
+**         N1 - matrix of numerator degress of freedom (N1 > 0)
+**         N2 - matrix of denominator degress of freedom (N2 > 0)
+**             ( N1 & N2 must be E x E conformable with X)
+**
+** Output: D - R x C matrix of densities of F(n1,n2)
+*/
+
+proc pdff(x,n1,n2) ;
+     if not(x > 0) ;
+        errorlog "ERROR: PDFF - X is not positive" ;
+        retp(error(99)) ;
+     endif ;
+     if not(n1 > 0) ;
+        errorlog "ERROR: PDFF - Numerator Degrees of Freedom are not positive" ;
+        retp(error(99)) ;
+     endif ;
+     if not(n2 > 0) ;
+        errorlog"ERROR: PDFF - Denominator Degrees of Freedom are not positive";
+        retp(error(99)) ;
+     endif ;
+    if (n1+n2) < 100 ;
+       retp(exp(ln(gamma((n1+n2)./2))-ln(gamma(n1./2))-ln(gamma(n2./2))
+            + n1.*ln(n1)./2+n2.*ln(n2)./2+(n1./2-1).*ln(x)
+            - (n1+n2).*ln(n2+n1.*x)./2)) ;
+    else ;
+       retp(exp(lnfact((n1+n2)./2-1)-lnfact(abs(n1./2-1))-lnfact(abs(n2./2-1))
+            + n1.*ln(n1)./2+n2.*ln(n2)./2+(n1./2-1).*ln(x)
+            - (n1+n2).*ln(n2+n1.*x)./2)) ;
+    endif ;
+endp ;
+
+/* CDFF  - Cumulative Distribution function of F distribution
+**
+** Format: Y = cdff(f,n1,n2)
+**
+** Input:  X  - R x C matrix of f ratio's (F > 0)
+**         N1 - matrix of numerator degress of freedom (N1 > 0)
+**         N2 - matrix of denominator degress of freedom (N2 > 0)
+**             ( N1 & N2 must be E x E conformable with X)
+**
+** Output: Y - R x C matrix of probabilities st. Pr(x <= X) = Y
+**             where x ~ F(n1,n2)
+**
+** Notes:  This uses the intrinsic GAUSS function CDFFC
+*/
+
+proc cdff(x,n1,n2) ;
+     retp(1 - cdffc(x,n1,n2)) ;
+endp ;
+
+/* INVCDFF - Inverse of the F Cumulative Distribution function
+**           with n1,n2 degrees of freedom
+**
+** Usage: x = invcdff(p,n1,n2)
+**
+** Input:  P  - matrix of percentage points ( 0 < p < 1 )
+**         N1 - matrix of numerator df (conformable with p)
+**         N2 - matrix of denominator df (conformable with p)
+**
+** Output: X  - matrix of critical values st Pr(x < X) = P and x ~ F(n1,n2)
+*/
+
+proc invcdff(p,n1,n2) ;
+     local converge,negative,tol,tol2,t,z,a,b,c,d,x0,x1,f0,df0,k ;
+     if not(p > 0 and p < 1) ;
+        errorlog "ERROR: INVCDFF - P not in range (0,1)" ;
+     endif ;
+     if not(n1 > 0) ;
+        errorlog "ERROR: INVCDFT - N1 is not positive" ;
+        retp(error(99)) ;
+     endif ;
+     if not(n2 > 0) ;
+        errorlog "ERROR: INVCDFT - N2 is not positive" ;
+        retp(error(99)) ;
+     endif ;
+     tol = 1e-7 ;
+     tol2 = tol^2 ;
+     /* Use Paulson normal approx to start */
+     t  = sqrt(-2*ln(abs((p.>0.5) - p)));
+     z  = 2.515517 + t.*(0.802853 + t.*0.010328) ;
+     d  = 1 + t.*(1.432788 + t.*(0.189269 + t.*0.001308)) ;
+     z  = t - (z./d) ;
+     z  = (p.>0.5).*z - (p.<=0.5).*z ;
+     c  = 2./(9.*n2) ;
+     d  = 2./(9.*n1) ;
+     a  = 1 - c ;
+     b  = 1 - d ;
+     d  = (a^2).*d + (b^2).*c - c.*d.*(z^2) ;
+     c  = a^2 - c.*(z^2) ;
+     x0 = abs((a.*b + z.*sqrt(d + (tol-d).*(d.<0)))./(c + (1-c).*(c.<0.3)))^3 ;
+     x0 = x0 + (d.<=0 .or  c.< 0.3).*(0.5.*(p.<0.5) + 2.0.*(p.>=0.5) - x0) ;
+     p  = 1 - p ;
+     clear converge,k ;
+     do until( converge or k > 50 ) ;
+        f0  = cdffc(x0,n1,n2) ;
+        df0 = missrv(miss(pdff(x0,n1,n2),0),tol) ;
+        x1 = x0 - (p-f0)./df0 ;
+        negative = not(x1 > tol2) ;
+        if negative ;
+           x1 = x1 + (x1.<=tol2).*(x0.*(0.5 + 1.5.*(p.< f0)) - x1) ;
+        endif ;
+        converge = abs(x0 - x1) < tol and not negative ;
+        x0 = x1 ;
+        k = k + 1 ;
+     endo ;
+     if not converge ;
+        errorlog "Warning: INVCDFF has not converged " ;
+     endif ;
+     ndpclex ;
+     retp(x0) ;
+endp ;
+
+/* RNDF - Random numbers from a F Distribution
+**
+** Usage:  x = rndf(r,c,n1,n2)
+**
+** Input:  R  - scalar of row size returned matrix
+**         C  - scalar of column size returned matrix
+**         N1 - matrix of numerator degrees of freedom for F distribution
+**             (ExE conformable with RxC matrix)
+**         N2 - matrix of denominator degrees of freedom for F distribution
+**             (ExE conformable with RxC matrix)
+**
+** Output: X - R X C matrix of random numbers ~ F(n1,n2)
+*/
+
+proc rndf(r,c,n1,n2) ;
+     if not(n1 > 0) ;
+        errorlog "ERROR: RNDF - Numerator DF are not positive" ;
+        retp(error(99)) ;
+     endif ;
+     if not(n2 > 0) ;
+        errorlog "ERROR: RNDF - Denominator DF are not positive" ;
+        retp(error(99)) ;
+     endif ;
+     retp(invcdff(rndu(r,c),n1,n2)) ;
+endp ;
+
+/* PDFCHI - Chi squared Probability density function with n1 degrees
+**          of freedom
+**
+** Usage:  D = pdfchi(x,n)
+**
+** Input:  X - matrix of chi-squared values (X > 0)
+**         N - matrix of degrees of freedom (N > 0) (conformable with X)
+**
+** Output: D - matrix of density of Chi square(n) at X
+*/
+proc pdfchi(x,n) ;
+    if not(n > 0) ;
+       errorlog "ERROR: PDFCHI - N is not positive" ;
+       retp(error(99)) ;
+    endif ;
+    if not(x > 0) ;
+       errorlog "ERROR: PDFCHI - X is not positive" ;
+       retp(error(99)) ;
+    endif ;
+    if n < 100 ;
+       retp(exp(-n.*ln(2)./2-ln(gamma(n./2))+(n./2-1).*ln(x)-x./2)) ;
+    else ;
+       retp(exp(-n.*ln(2)./2-lnfact(n./2-1)+(n./2-1).*ln(x)-x./2)) ;
+    endif ;
+endp ;
+
+/* CDFCHI - Chi squared Cumulative Distribution function with n1 degrees
+**          of freedom
+**
+** Usage:  P = cdfchi(x,n)
+**
+** Input:  X - matrix of chi-squared values (X > 0)
+**         N - matrix of degrees of freedom (N > 0) (conformable with X)
+**
+** Output: P - matrix of percentage points st Pr(x < X) = P and x ~ Chi(n)
+*/
+
+proc cdfchi(x,n) ;
+    if not(n > 0) ;
+       errorlog "ERROR: CDFCHI - N is not positive" ;
+       retp(error(99)) ;
+    endif ;
+    if not(x > 0) ;
+       errorlog "ERROR: CDFCHI - X is not positive" ;
+       retp(error(99)) ;
+    endif ;
+  retp(1-cdfchic(x,n)) ;
+endp ;
+
+/* INVCFCHI - Inverse of the Chi squared Cumulative Distribution function
+**            with n1 degrees of freedom
+**
+** Usage:  x = invcfchi(p,n)
+**
+** Input:  P - matrix of percentage points ( 0 < p < 1 )
+**         N - matrix of degrees of freedom (N > 0) (conformable with X)
+**
+** Output: X - matrix of critical values st Pr(x < X) = P and x ~ Chi(n)
+*/
+
+proc invcfchi(p,n) ;
+     local converge,k,tol,t,d,z,x0,x1,f0,df0 ;
+     if not(p > 0 and p < 1) ;
+        errorlog "ERROR: INVCFCHI - P not in (0,1) " ;
+        retp(error(99)) ;
+     endif ;
+     if not(n > 0) ;
+        errorlog "ERROR: INVCFCHI - N is not positive" ;
+        retp(error(99)) ;
+     endif ;
+     tol = 1e-6.*sqrt(n) ;
+     clear converge,k ; /*Use Wilson-Hilferty approximation as initial value*/
+     t = sqrt(-2*ln(abs((p.>0.5) - p)));
+     z = 2.515517 + t.*(0.802853 + t.*0.010328) ;
+     d = 1 + t.*(1.432788 + t.*(0.189269 + t.*0.001308)) ;
+     z = t - (z./d) ;
+     z = (p.>0.5).*z - (p.<=0.5).*z ;
+     d = 2./(9.*n) ;
+     x0 = n.*(z.*sqrt(d) + 1 - d)^3 ;
+     x0 = x0 + (0.1 - x0).*(x0 .<= 0) ;
+     p = 1 - p ;
+     do until(converge or k > 50) ;
+         f0 = cdfchic(x0,n) ;
+        df0 = missrv(miss(pdfchi(x0,n),0),tol) ;
+         x1 = (x0 - (p-f0)./df0) ;
+         x1 = x1 + (tol - x1).*(x1.<=0) ;
+         converge = abs(x0 - x1) < tol ;
+         x0 = x1 ;
+         k = k + 1 ;
+     endo ;
+     if not converge ;
+        errorlog "Warning: INVCDFF has not converged " ;
+     endif ;
+     ndpclex ;
+     retp(x0) ;
+endp ;
+
+/* RNDCHI - Random numbers from a Chi square Distribution
+**
+** Usage:  x = rndchi(r,c,n)
+**
+** Input:  R - scalar of row size returned matrix
+**         C - scalar of Column size returned matrix
+**         N - matrix of degrees of freedom for Chi square distribution
+**             (ExE conformable with RxC matrix)
+**
+** Output: X - R X C matrix of random numbers ~ Chi(N)
+*/
+
+proc rndchi(r,c,n) ;
+     if not(n > 0) ;
+        errorlog "ERROR: RNDCHI - Degrees of Freedom are not positive" ;
+        retp(error(99)) ;
+     endif ;
+     retp(invcfchi(rndu(r,c),n)) ;
+endp ;
+
+/* PDFB  - Binomial Probability Distribution function
+**
+** Format: y = pdfb(x,p,n)
+**
+** Input:  X - R x C matrix of number of successes (0 < X < N)
+**         P - matrix of probability of success (0 < P < 1)
+**         N - matrix of number of trials (N > 0)
+**             ( P & N must be E x E conformable with X)
+**
+** Output: Y - R x C matrix of probabilities st. Pr(x = X) = Y
+**             where x ~ Binomial(p,n)
+*/
+
+proc pdfb(x,p,n) ;
+     local b ;
+     if not(0 < p and p < 1) ;
+        errorlog("ERROR: PDFB - P not in range (0,1)") ;
+        retp(error(99)) ;
+     endif ;
+     if not(n > 0) ;
+        errorlog("ERROR: PDFB - N <= 0") ;
+        retp(error(99)) ;
+     endif ;
+     if n < 100 ;
+        b = (n)!./((n-x)!.*x!).*(p^x).*((1-p)^(n-x)) ;
+     else ;
+        b = exp(lnfact(n)-lnfact(n-x)-lnfact(x)+x.*ln(p)+(n-x).*ln(1-p)) ;
+     endif ;
+     ndpclex ;
+     retp(b) ;
+endp ;
+
+/* CDFB  - Binomial Cumulative Distribution function
+**
+** Format: y = cdfb(x,p,n)
+**
+** Input:  X - R x C matrix of number of successes (0 < X < N)
+**         P - matrix of probability of success (0 < P < 1)
+**         N - matrix of number of trials (N > 0)
+**             ( P & N must be E x E conformable with X)
+**
+** Output: Y - R x C matrix of probabilities st. Pr(x <= X) = Y
+**             where x ~ Binomial(p,n)
+**
+** Notes:  This uses the relationship between the Binomial distribution
+**         and the F distribution. The approximation has an accuracy of 6
+**         decimal places but is more stable for large values of N than
+**         using the summation of individual Binomial terms.
+*/
+
+proc cdfb(x,p,n) ;
+     local z,b ;
+     if not(0 < p and p < 1) ;
+        errorlog("ERROR: CDFB - P not in range (0,1)") ;
+        retp(error(99)) ;
+     endif ;
+     if not(n > 0) ;
+        errorlog("ERROR: CDFB - N is negative") ;
+        retp(error(99)) ;
+     endif ;
+     z = x ;
+     if not (z <= n) ;
+       z = n + (z - n).*(z .<= n) ;
+       errorlog("WARNING: CDFB - some values of X > N, CDF set to 1 for them");
+     endif ;
+     if not (z >= 0) ;
+       z = z.*(z .>= 0) ;
+       errorlog("WARNING: CDFB - some values of X < 0, CDF set to 0 for them");
+     endif ;
+     z = z.*(z .< n) ;
+     b = cdff(((z+1).*(1-p))./(p.*(n-z)),2.*(n-z),2.*(z+1)) ;
+     b = 1 + (b - 1).*(x .< n .and b .< 1) ;
+     b = b.*(b .> 0) ;
+     ndpclex ;
+     retp(b) ;
+endp ;
+
+/* CDFBC - Complement of Binomial Cumulative Distribution function
+**
+** Format: p = cdfbc(x,p,n)
+**
+** Input:  X - R x C matrix of number of successes (0 < X < N)
+**         P - matrix of probability of success (0 < P < 1)
+**         N - matrix of number of trials (N > 0)
+**             ( P & N must be E x E conformable with X)
+**
+** Output: P - R x C matrix of probabilities st. 1 - Pr(x <= X) = P
+**             where x ~ Binomial(p,n)
+**
+** Notes:  This uses the relationship between the Binomial distribution
+**         and the F distribution. The approximation has an accuracy of 6
+**         decimal places but is more stable for large values of N than
+**         using the summation of individual Binomial terms.
+*/
+
+proc cdfbc(x,p,n) ;
+     retp(1 - cdfb(x,p,n)) ;
+endp ;
+
+/* INVCDFB  - Inverse Binomial Cumulative Distribution function
+**
+** Format: x = invcdfb(y,p,n)
+**
+** Input:  Y - R x C matrix of probabilities (0 < Y < 1)
+**         P - matrix of probability of success (0 < P < 1)
+**         N - matrix of number of trials (N > 0)
+**             ( P & N must be E x E conformable with X)
+**
+** Output: X - R x C matrix of number of successes (0 < X < N) st.
+**             Pr(x <= X) = Y, where x ~ Binomial(p,n)
+**
+** Notes:  This uses the relationship between the Binomial distribution
+**         and the F distribution. The approximation has an accuracy of 6
+**         decimal places but is more stable for large values of N than
+**         using the summation of individual Binomial terms.
+*/
+
+proc invcdfb(y,p,n) ;
+     local q,converge,i,z,z1,z2,n1,n2,nz,x,nx ;
+     if not(0 <= y and y <= 1) ;
+        errorlog("ERROR: INVCDFB - Y not in range [0,1]") ;
+        retp(error(99)) ;
+     endif ;
+     if not(0 < p and p < 1) ;
+        errorlog("ERROR: INVCDFB - P not in range (0,1)") ;
+        retp(error(99)) ;
+     endif ;
+     if not(n > 0) ;
+        errorlog("ERROR: INVCDFB - N <= 0") ;
+        retp(error(99)) ;
+     endif ;
+     q = (1-p)./p ;
+     z1 = 1 ;
+     z2 = n + 1 ;
+     nz = 2.*z2 ;
+     clear converge,i ;
+     do until(converge or i > 50) ;
+        z  = (z1 + z2)./2 ;
+        n2 = 2.*z ;
+        n1 = nz - n2 ;
+        x  = cdff(q.*(n2./n1),n1,n2) .<= y ;
+        nx = .not x ;
+        z1 = nx.*z1 +  x.*z ;
+        z2 =  x.*z2 + nx.*z ;
+        converge = abs(z2-z1) < 0.5 ;
+        i = i + 1 ;
+     endo ;
+     if not converge ;
+        errorlog "WARNING: INVCDFB has not converged" ;
+     endif ;
+     retp(round(z)-1) ;
+endp ;
+
+/* RNDB - Random number generator for Binomial Distribution
+**
+** Format: y = rndb(r,c,p,n)
+**
+** Input:  R - scalar - number of rows
+**         C - scalar - number of columns
+**         P - matrix - (rxc conformable) probability of success (0 < P < 1)
+**         N - scalar - number of trials (N > 0)
+**
+** Output: Y - R x C matrix of random counts ~ Binomial(P,N)
+**
+** Notes: This uses the direct method of summing N independent Benoulli Trials
+*/
+
+proc rndb(r,c,p,n) ;
+    local b,i,j,k,maxn ;
+     if not(0 <= p and p <= 1) ;
+        errorlog("ERROR: RNDB - P not in range [0,1]") ;
+        retp(error(99)) ;
+     endif ;
+     if not(n > 0) ;
+        errorlog("ERROR: RNDB - N <= 0") ;
+        retp(error(99)) ;
+     endif ;
+    b = zeros(r,c) ; p = p + b;
+    i = 1 ;
+    do until(i > c) ;
+       maxn = int(maxvec()./n) ;
+       j = 1 ;
+       do until(j > r) ;
+          k = minc(j+maxn-1|r) ;
+          b[j:k,i] = sumc(rndu(n,k-j+1).<(p[j:k,i]')) ;
+          j = j + maxn ;
+       endo ;
+       i = i + 1 ;
+    endo ;
+    retp(b) ;
+endp ;
+
+/* PDFP - Poisson Probability Distribution function
+**
+** Format: y = pdfp(x,m)
+**
+** Input:  X - R x C matrix of number of successes (N >= 0)
+**         M - matrix of mean number of successes (M > 0)
+**             (M must be E x E conformable with X)
+**
+** Output: Y - R x C matrix of probabilities st. Pr(x = X) = Y
+**             where x ~ Poisson(m)
+*/
+
+proc pdfp(x,m) ;
+     local p ;
+     if not ( m > 0 )  ;
+        errorlog("WARNING: PDFP - M <= 0") ;
+        retp(error(99)) ;
+     endif ;
+     if not ( x >= 0 )  ;
+        errorlog("WARNING: PDFP - some values of X < 0") ;
+        retp(error(99)) ;
+     endif ;
+     if x < 100 ;
+        p = exp(-m + x.*ln(m) - ln(x!)) ;
+     else ;
+        p = exp(-m + x.*ln(m) - lnfact(x)) ;
+     endif ;
+     ndpclex ;
+     retp(p) ;
+endp ;
+
+/* CDFP - Poisson Cumulative Distribution function
+**
+** Format: y = cdfp(x,m)
+**
+** Input:  X - R x C matrix of number of successes (X >= 0)
+**         M - matrix of mean number of successes (M > 0)
+**             (M must be E x E conformable with X)
+**
+** Output: Y - R x C matrix of probabilities st. Pr(x <= X) = Y
+**             where x ~ Poisson(m)
+**
+** Notes:  This uses the relationship between the Poisson distribution
+**         and the Chi-squared distribution. The approximation has an
+**         accuracy of 8 decimal places but is more stable for large values
+**         of N than using the summation of individual Poisson terms.
+*/
+
+proc cdfp(x,m) ;
+     local z,p ;
+     if not(m > 0) ;
+        errorlog("ERROR: CDFP - M is not positive") ;
+        retp(error(99)) ;
+     endif ;
+     z = x ;
+     if not (z >= 0) ;
+        z = z.*(z .>= 0) ;
+        errorlog("WARNING: CDFP - some values of X < 0, CDF set to 0 for them");
+     endif ;
+     p = cdfchic(2.*m,2.*(z+1)) ;
+     p = (1 + (p - 1).*(p .< 1)).*(p .> 0) ;
+     ndpclex ;
+     retp(p) ;
+endp ;
+
+/* CDFPC - Complement of Poisson Cumulative Distribution function
+**
+** Format: y = cdfpc(x,m)
+**
+** Input:  X - R x C matrix of number of successes (X >= 0)
+**         M - matrix of mean number of successes (M > 0)
+**             (M must be E x E conformable with X)
+**
+** Output: Y - R x C matrix of probabilities st. 1 - Pr(x <= X) = Y
+**             where x ~ Poisson(m)
+**
+** Notes:  This uses the relationship between the Poisson distribution
+**         and the Chi-squared distribution. The approximation has an
+**         accuracy of 8 decimal places but is more stable for large values
+**         of N than using the summation of individual Poisson terms.
+*/
+
+proc cdfpc(x,p,n) ;
+     retp(1 - cdfp(x,p,n)) ;
+endp ;
+
+/* INVCDFP - Inverse Poisson Cumulative Distribution function
+**
+** Format: x = invcdfp(y,m)
+**
+** Input:  Y - R x C matrix of probabilities (0 < Y < 1)
+**         M - matrix of mean number of successes (M > 0)
+**             (M must be E x E conformable with X)
+**
+** Output: X - R x C matrix of number of successes (X >= 0) st.
+**             Pr(x <= X) = Y, where x ~ Poisson(m)
+**
+** Notes:  This uses the relationship between the Poisson distribution
+**         and the Chi-squared distribution. The approximation has an
+**         accuracy of 8 decimal places but is more stable for large values
+**         of N than using the summation of individual Poisson terms.
+*/
+
+proc invcdfp(y,m) ;
+     local converge,i,z,z1,z2,m2,x,nx ;
+     if not(0 <= y and y <= 1) ;
+        errorlog("ERROR: INVCDFP - Y not in range [0,1]") ;
+        retp(error(99)) ;
+     endif ;
+     if not(m > 0) ;
+        errorlog("ERROR: INVCDFP - N is not positive") ;
+        retp(error(99)) ;
+     endif ;
+     m2 = 2.*m ;
+     z1 = 2 ;
+     z2 = m2 + 16.*sqrt(m) + 40 ;
+     clear converge,i ;
+     do until(converge or i >  50) ;
+        z  = (z1 + z2)./2 ;
+        x  = cdfchic(m2,z) .<= y ;
+        nx = .not x ;
+        z1 = nx.*z1 +  x.*z ;
+        z2 =  x.*z2 + nx.*z ;
+        converge = abs(z2-z1) < 0.5 ;
+        i = i + 1 ;
+     endo ;
+     if not converge ;
+        errorlog "WARNING: INVCDFB has not converged" ;
+     endif ;
+     retp(round(z./2 - 1)) ;
+endp ;
+
+/*  RNDP
+**
+**  Purpose:  Returns matrix of pseudo random numbers from poisson
+**            distributions with means given in input matrix
+**
+**  Format:   y = rndp(r,c,m)
+**
+**  Input:    R - scalar - number of rows in returned matrix
+**            C - scalar - number of columns in returned matrix
+**            M - ExE matrix of means for Poisson distribution
+**                (Conformable with RxC matrix)
+**
+**  Output:   Y - RxC matrix containing samples from a poisson distribution
+**                with the mean given in the corresponding element of the
+**                input matrix
+**
+**  Notes:    The maximum size of input matrix for which this procedure is
+**            guaranteed to work for is maxvec()./6 elements (1620 for
+**            Gauss 2). Larger input matrices can be used provided the mean
+**            values are not all in the range  break1 < mean < break2
+**            The seed is taken from the system clock at startup but may be
+**            set using the RNDSEED command ( see GAUSS command reference )
+**
+**  Example:  y = rndp(10,2,2~4) ;
+**
+**             - this gives a 10x2 matrix with column :
+**                 1 being 10 samples from a poisson dist. with mean 2
+**                 2 being 10 samples from a poisson dist. with mean 4
+**
+*/
+
+proc rndp(r,c,m) ;
+   local break1,break2,pmode,n,index,sample,selector,pos,work1,work2,i;
+   if (r < 1);
+      errorlog("Error: RNDP - number of rows must be > 0");
+      retp(error(1));
+   elseif (c < 1);
+      errorlog("Error: RNDP - number of columns must be > 0");
+      retp(error(2));
+   elseif (minc(minc(m)) < 0);
+      errorlog("Error: RNDP - Poisson means must be > 0");
+      retp(error(3));
+   endif;
+   break1 = 7  ;     /* Last value for which the forward search is used */
+   break2 = 60 ;     /* Last value before normal approximation is used */
+   m = m.*ones(r,c) ;
+   m = vecr(m) ;
+   n = rows(m) ;
+   sample = zeros(n,1) ;
+   index = seqa(1,1,n) ;
+   selector = m .> break2 ;  /* Select values for normal approx. */
+   pos = submat(packr(index~miss(selector,0)),0,1) ;
+   if not scalmiss(pos) ;
+      /* Generate sample values using normal approx */
+      sample[pos,1] = int(m[pos,1]+sqrt(m[pos,1]).*rndn(rows(pos),1)+.5);
+      sample[pos,1] = sample[pos,1].*(sample[pos,1] .> 0) ;
+      if n == rows(pos) ; /* if no values left to be generated then exit */
+         goto exit ;
+      endif ;
+      /* Leave only values to be processed */
+      m = submat(packr(m~miss(selector,1)),0,1) ;
+      index = submat(packr(index~miss(selector,1)),0,1) ;
+   endif ;
+   /* Select values for mode search */
+   n = rows(m) ;
+   pos = submat(packr(seqa(1,1,n)~miss(m .> break1,0)),0,1) ;
+   if not scalmiss(pos) ;
+      work1 = int(m[pos,1]) ;         /* Split mean into integer and */
+      m[pos,1] = m[pos,1] - work1 ;   /* fractional parts */
+      /* Table of values of cdf at mode of poisson distribution */
+      let pmode[60,1] =
+      0.735758882342885 0.676676416183064 0.647231888782232 0.628836935179874
+      0.615960654833064 0.606302782412592 0.598713835523037 0.592547341437592
+      0.587408244331942 0.583039750192986 0.579266762921713 0.575965248573065
+      0.573044561348093 0.570436712827373 0.568089575608544 0.565962423009877
+      0.564022911672259 0.562244986044038 0.560607389391509 0.559092584231326
+      0.557685955471078 0.556375212739087 0.555149935616770 0.554001223074996
+      0.552921420024416 0.551903901703405 0.550942901981355 0.550033375383794
+      0.549170885281877 0.548351512577912 0.547571780589863 0.546828592844762
+      0.546119181238658 0.545441062581462 0.544792001969690 0.544169981754378
+      0.543573175121377 0.542999923495121 0.542448717128705 0.541918178362538
+      0.541407047128553 0.540914168352479 0.540438480967288 0.539979008299820
+      0.539534849632268 0.539105172772506 0.538689207493780 0.538286239726013
+      0.537895606399060 0.537516690853148 0.537148918744220 0.536791754382338
+      0.536444697450023 0.536107280054810 0.535779064076528 0.535459638775088
+      0.535148618629082 0.534845641379320 0.534550366254748 0.534262472360959;
+      i = seqa(1,1,maxc(work1)) ;
+      /* Set up working matrix with columns containing :
+         1 index of value in original matrix
+         2 integer part of original mean
+         3 poisson probability ( starting at modal value )
+         4 Value of poisson cdf ( starting at modal value )
+         5 Sample value for the poisson cdf                   */
+      work1 = index[pos,1] ~ work1 ~ submat((exp(-i).*(i).^i./(i!)),work1,0) ~
+              submat(pmode,work1,0) ~ rndu(rows(pos),1) ;
+      clear pmode,pos ;
+      /* Split into 2 cases - forward or backward search from mode */
+      selector = work1[.,4] .< work1[.,5] ;
+      work2 = packr(work1~miss(selector,1)) ;
+      work1 = packr(work1~miss(selector,0)) ;
+      if not scalmiss(work2) ;
+         /* Backward search from mode ( stop on reaching zero ) */
+         work2 = work2[.,1:5] ;
+         i = work2[.,2] ;
+         do until(0) ;
+            work2[.,4] = work2[.,4] - work2[.,3] ; /* Update cdf */
+            /* Select values satisfying cdf criterion */
+            selector = (work2[.,5] .> work2[.,4]) .or (i .== 0) ;
+            pos = submat(packr(seqa(1,1,rows(work2))~miss(selector,0)),0,1) ;
+            if not scalmiss(pos) ;
+               sample[work2[pos,1],1] = i[pos,1] ;
+               if rows(work2) == rows(pos) ; /* Exit loop - All done */
+                  goto modefrwd ;
+               else ;
+                  /* Remove values found */
+                  i = submat(packr(i~miss(selector,1)),0,1) ;
+                  work2 = packr(work2~miss(selector,1)) ;
+               endif ;
+            endif ;
+            work2[.,3] = work2[.,3] .* i./work2[.,2] ; /* Update prob */
+            i = i - 1 ;
+         endo ;
+      endif ;
+modefrwd:
+      if not scalmiss(work1) ;
+         /* Forward search from mode */
+         work1 = work1[.,1:5] ;
+         i = work1[.,2] ;
+         do until(0) ;
+            i = i + 1 ;
+            work1[.,3] = work1[.,3] .* work1[.,2]./i ; /* Update prob */
+            work1[.,4] = work1[.,4] + work1[.,3] ;     /* Update cdf */
+            /* Select values satisfying cdf criterion */
+            selector = work1[.,5] .< work1[.,4] ;
+            pos = submat(packr(seqa(1,1,rows(work1))~miss(selector,0)),0,1) ;
+            if not scalmiss(pos) ;
+               sample[work1[pos,1],1] = i[pos,1] ;
+               if rows(work1) == rows(pos) ; /* Exit loop - All done */
+                  goto forward ;
+               else ;
+                  /* Remove values found */
+                  i = submat(packr(i~miss(selector,1)),0,1) ;
+                  work1 = packr(work1~miss(selector,1)) ;
+               endif ;
+            endif ;
+         endo ;
+      endif ;
+   endif ;
+forward:
+   /* Forward search from zero using exponential variables and transformation
+      Set up working matrix  with columns containing :
+         1 index of value in original matrix
+         2 exp(-(original mean or fractional part of real mean if > break1))
+         5 Accumulated value for the exponential variables  */
+   work1 = index ~ exp(-m) ~ rndu(rows(m),1) ;
+   clear m,index ;
+   i = 0 ;
+   do until(0) ;
+      /* Select values satisfying cdf criterion */
+      work1 = work1[.,1:3] ;
+      selector = work1[.,2] .> work1[.,3] ;
+      pos = submat(packr(seqa(1,1,rows(work1))~miss(selector,0)),0,1) ;
+      if not scalmiss(pos) ;
+         sample[work1[pos,1],1] = sample[work1[pos,1],1] +i.*ones(rows(pos),1);
+         if rows(work1) == rows(pos) ; /* Exit - All done */
+            goto exit ;
+         else ;
+           /* Remove values found */
+           work1 = packr(work1~miss(selector,1)) ;
+         endif ;
+      endif ;
+      /* Accumulate exponential variables */
+      work1[.,3] = work1[.,3] .* rndu(rows(work1),1) ;
+      i = i + 1 ;
+   endo ;
+exit:
+   retp(reshape(sample,r,c)) ; /* Return reshaped matrix of poisson samples */
+endp ; /* of Poisson random number generator */
+
+/* PDFNB - Negative Binomial Probability Distribution function
+**
+** Format: y = pdfnb(x,p,n)
+**
+** Input:  X - R x C matrix of number of successes (X >= 0)
+**         P - matrix of probability of success (0 < P < 1)
+**         N - Negative-Binomial parameter (N > 0)
+**             ( P & N must be E x E conformable with X)
+**
+** Output: Y - R x C matrix of probabilities st. Pr(x = X) = Y
+**             where x ~ Negative-Binomial(p,n)
+**
+** Notes:  The mean, variance of the Negative Binomial are:
+**         m = np/(1-p); v = np/((1-p)^2)
+**
+**         The Negative Binomial is also commonly parameterized as
+**         NB(P,N) where P = p/(1-p) and N = n
+**         NB(m,s) where m = np/(1-p) (the mean) and s = 1/n
+**
+**         As n tends to infinity and p to 0, such that Np/(1-p) = m
+**         then the Negative Binomial tends to a Poisson distribution with
+**         mean m
+**
+**         This function uses the explicit definition for moderate values
+**         of n and x and the relationship with the beta distribution for
+**         large values of n or x.
+*/
+
+proc pdfnb(x,p,n) ;
+     local nb,r,c,v,pos ;
+     if not(0 < p and p < 1) ;
+        errorlog("ERROR: PDFNB - P not in range (0,1)") ;
+        retp(error(99)) ;
+     endif ;
+     if not(n > 0) ;
+        errorlog("ERROR: PDFNB - N is negative") ;
+        retp(error(99)) ;
+     endif ;
+     if not (x >= 0) ;
+        errorlog"ERROR: PDFNB - some values of X < 0";
+        retp(error(99)) ;
+     endif ;
+     r = maxc(rows(x)|rows(p)|rows(n)) ;
+     c = maxc(cols(x)|cols(p)|cols(n)) ;
+     v = r*c ;
+     p = reshape(p.*ones(r,c),v,1) ;
+     n = reshape(n.*ones(r,c),v,1) ;
+     x = reshape(x.*ones(r,c),v,1) ;
+     if (n+x) < 100 ;
+        nb = gamma(n+x)./gamma(n).*(p^x).*((1-p)^n) ;
+     else ;
+        nb = cdfbeta(p,n,x+1) ;
+        pos = submat(packr(seqa(1,1,v)~miss(x.==0,1)),0,1) ;
+        if not scalmiss(pos) ;
+           nb[pos] = nb[pos] - cdfbeta(p[pos],n[pos],x[pos]) ;
+        endif ;
+     endif ;
+     nb = (1 + (nb - 1).*(nb .< 1)).*(nb .> 0) ;
+     ndpclex ;
+     retp(reshape(nb,r,c)) ;
+endp ;
+
+/* CDFNB - Negative Binomial Cumulative Distribution function
+**
+** Format: y = cdfnb(x,p,n)
+**
+** Input:  X - R x C matrix of number of successes (X >= 0)
+**         P - matrix of probability of success (0 < P < 1)
+**         N - Negative-Binomial parameter (N > 0)
+**             ( P & N must be E x E conformable with X)
+**
+** Output: Y - R x C matrix of probabilities st. Pr(x <= X) = Y
+**             where x ~ Negative-Binomial(p,n)
+**
+** Notes:  This uses the relationship between the Negative-Binomial
+**         distribution and the Beta distribution. The approximation has an
+**         accuracy of 6 decimal places but is more stable for large values
+**         of N than using the summation of individual Negative-Binomial terms.
+*/
+
+proc cdfnb(x,p,n) ;
+     local z,nb,r,c,v ;
+     if not(0 < p and p < 1) ;
+        errorlog("ERROR: CDFNB - P not in range (0,1)") ;
+        retp(error(99)) ;
+     endif ;
+     if not(n > 0) ;
+        errorlog("ERROR: CDFNB - N is negative") ;
+        retp(error(99)) ;
+     endif ;
+     z = x ;
+     if not (z >= 0) ;
+        z = z.*(z .>= 0) ;
+        errorlog"WARNING: CDFNB - some values of X < 0, CDF set to 0 for them";
+     endif ;
+     r = maxc(rows(x)|rows(p)|rows(n)) ;
+     c = maxc(cols(x)|cols(p)|cols(n)) ;
+     v = r*c ;
+     p = reshape(p.*ones(r,c),v,1) ;
+     n = reshape(n.*ones(r,c),v,1) ;
+     z = reshape(z.*ones(r,c),v,1) ;
+     nb = cdfbeta(p,n,z+1) ;
+     nb = (1 + (nb - 1).*(nb .< 1)).*(nb .> 0) ;
+     ndpclex ;
+     retp(reshape(nb,r,c)) ;
+endp ;
+
+/* CDFNBC - Complement of Negative Binomial Cumulative Distribution function
+**
+** Format: y = cdfnbc(x,p,n)
+**
+** Input:  X - R x C matrix of number of successes (X >= 0)
+**         P - matrix of probability of success (0 < P < 1)
+**         N - Negative-Binomial parameter (N > 0)
+**             ( P & N must be E x E conformable with X)
+**
+** Output: Y - R x C matrix of probabilities st. 1 - Pr(x <= X) = Y
+**             where x ~ Negative-Binomial(p,n)
+**
+** Notes:  This uses the relationship between the Negative-Binomial
+**         distribution and the Beta distribution. The approximation has an
+**         accuracy of 6 decimal places but is more stable for large values
+**         of N than using the summation of individual Negative-Binomial terms.
+*/
+
+proc cdfnbc(x,p,n) ;
+     retp(1 - cdfnb(x,p,n)) ;
+endp ;
+
+/* INVCDFNB - Inverse Negative-Binomial Cumulative Distribution function
+**
+** Format: x = invcdfnb(y,p,n)
+**
+** Input:  Y - R x C matrix of probabilities (0 < Y < 1)
+**         P - matrix of probability of success (0 < P < 1)
+**         N - Negative-Binomial parameter (N > 0)
+**             ( P & S must be E x E conformable with X)
+**
+** Output: X - R x C matrix of number of successes (X >= 0) st.
+**             Pr(x <= X) = Y, where x ~ Negative-Binomial(p,n)
+**
+** Notes:  This uses the relationship between the Negative-Binomial
+**         distribution and the Beta distribution. The approximation has an
+**         accuracy of 6 decimal places but is more stable for large values
+**         of N than using the summation of individual Negative-Binomial terms.
+*/
+
+proc invcdfnb(y,p,n) ;
+     local converge,r,c,i,z,z1,z2,x,nx ;
+     if not(0 <= y and y <= 1) ;
+        errorlog("ERROR: INVCDFNB - Y not in range [0,1]") ;
+        retp(error(99)) ;
+     endif ;
+     if not(0 < p and p < 1) ;
+        errorlog("ERROR: INVCDFNB - P not in range (0,1)") ;
+        retp(error(99)) ;
+     endif ;
+     if not(n > 0) ;
+        errorlog("ERROR: INVCDFNB - N is not positive") ;
+        retp(error(99)) ;
+     endif ;
+     r = maxc(rows(y)|rows(p)|rows(n)) ;
+     c = maxc(cols(y)|cols(p)|cols(n)) ;
+     z1 = ones(r,c) ;
+     n = n.*z1 ;
+     z2 = (n./p) + 16.*sqrt(n./p) + 40 ;
+     clear converge,i ;
+     do until(converge or i >  50) ;
+        z  = (z1 + z2)./2 ;
+        x  = cdfbeta(p,n,z) .<= y ;
+        nx = .not x ;
+        z1 = nx.*z1 +  x.*z ;
+        z2 =  x.*z2 + nx.*z ;
+        converge = maxc(maxc(abs(z2-z1))) < 0.5 ;
+        i = i + 1 ;
+     endo ;
+     if not converge ;
+        errorlog "WARNING: INVCDFNB has not converged" ;
+     endif ;
+     retp(round(z) - 1) ;
+endp ;
+
+/* RNDNB - Random number generator for Negative-Binomial Distribution
+**
+** Format: y = rndnb(r,c,p,n)
+**
+** Input:  R - scalar - number of rows
+**         C - scalar - number of columns
+**         P - scalar - probability of success (0 < P < 1)
+**         N - scalar - Negative-Binomial scale parameter
+**
+** Output: Y - R x C matrix of random counts ~ Negative-Binomial(P,N)
+**
+** Notes: This uses the direct method of summing independent Benoulli Trials
+**        until the required number of successes have been achieved (and
+**        N is an integer) else it uses the inverse transform method
+*/
+
+proc rndnb(r,c,p,n) ;
+     local nb,pos,j,v,brk,np,isl,isp,inn,inp ;
+     if not(0 <= p and p <= 1) ;
+        errorlog("ERROR: RNDNB - P not in range [0,1]") ;
+        retp(error(99)) ;
+     endif ;
+     if not(n > 0) ;
+        errorlog("ERROR: RNDNB - N <= 0") ;
+        retp(error(99)) ;
+     endif ;
+     brk = 60 ;
+     v = r*c ;
+     nb = zeros(v,1) ;
+     p = reshape(p.*ones(r,c),v,1) ;
+     n = reshape(n.*ones(r,c),v,1) ;
+     pos = seqa(1,1,v).*(1~0) ;
+     isl = ((n.*p./(1-p)) .> brk) .or ((n - int(n)) .> 0) ;
+     isp = submat(packr(pos[.,1]~miss(isl,0)),0,1) ;
+     if not scalmiss(isp) ;
+        nb[isp] = invcdfnb(rndu(rows(isp),1),p[isp],n[isp]) ;
+     endif ;
+     pos = packr(pos~miss(isl,1)) ;
+     j = 1 ;
+     do until(scalmiss(pos)) ;
+        pos = pos[.,1:2] ;
+        inn = n[pos[.,1]] ;
+        inp = p[pos[.,1]] ;
+        np = rows(pos) ;
+        pos[.,2] = pos[.,2] + (rndu(np,1) .< inp) ;
+        nb[pos[.,1]] = j - inn ;
+        pos = packr(pos~miss(pos[.,2] .< inn,0)) ;
+        j = j + 1 ;
+     endo ;
+     retp(reshape(nb,r,c)) ;
+endp ;
+
+/* PDFGAM - Standardized Gamma Probability Density function
+**
+** Usage:  d = pdfgam(x,a)
+**
+** Input:  X - matrix of Gamma values
+**         A - matrix of shape parameter for Gamma distribution
+**
+** Output: D - matrix of density of Gamma(a) function at X
+*/
+
+proc pdfgam(x,a) ;
+     if not(a > 0) ;
+        errorlog "ERROR: PDFGAM - Shape parameter is not positive" ;
+        retp(error(99)) ;
+     endif ;
+    if x < 100 ;
+       retp(x^(a-1) .* exp(-x) ./ gamma(a)) ;
+    else ;
+       retp(exp((a-1).*ln(x) - x - lnfact(a-1))) ;
+    endif ;
+endp ;
+
+/* CDFGAMC - Complement of Gamma Cumulative Distribution function
+**
+** Format: p = cdfgamc(x,a)
+**
+** Input:  X - R x C matrix of gamma values
+**         A - matrix of shape parameters
+**             (must be E x E conformable with X)
+**
+** Output: P - R x C matrix of probabilities st. 1 - Pr(x <= X) = P
+**             where x ~ Gamma(a)
+*/
+
+proc cdfgamc(x,a) ;
+     retp(1 - cdfgam(a,x)) ;
+endp ;
+
+/* INVCDFG - Inverse of the Gamma Cumulative Distribution function
+**           with shape parameter A
+**
+** Usage: x = invcdfg(p,a)
+**
+** Input:  P  - matrix of percentage points ( 0 < p < 1 )
+**         A  - matrix of shape parameters (conformable with p)
+**
+** Output: X  - matrix of critical values st Pr(x < X) = P and x ~ Gamma(A)
+*/
+
+proc invcdfg(p,a) ;
+     local converge,negative,tol,tol2,x0,x1,f0,df0,k ;
+     if not(p >= 0 and p <= 1) ;
+        errorlog "ERROR: INVCDFG - P not in range (0,1)" ;
+        retp(error(99)) ;
+     endif ;
+     if not(a > 0) ;
+        errorlog "ERROR: INVCDFG - A is not positive" ;
+        retp(error(99)) ;
+     endif ;
+     tol  = 1e-8 ;
+     tol2 = 1e-20 ;
+     x0   = a.*ones(rows(p),cols(p)) ;
+     clear converge,k ;
+     do until( converge or k > 50 ) ;
+        f0  = cdfgam(a,x0) ;
+        df0 = pdfgam(x0,a) ;
+        if not(df0 > tol2) ;
+           df0 = df0 + (df0 .< tol2).*(tol2 - df0) ;
+        endif;
+        x1  = x0 + (p - f0)./df0 ;
+        negative = not(x1 > tol) ;
+        if negative ;
+           x1 = x1 + (x1.<=tol).*(x0.*(0.5 + 1.5.*(p.> f0)) - x1) ;
+        endif ;
+        converge = abs(x0 - x1) < tol and not negative ;
+        x0 = x1 ;
+        k = k + 1 ;
+     endo ;
+     if not converge ;
+        errorlog "Warning: INVCDFG has not converged " ;
+     endif ;
+     ndpclex ;
+     retp(x0) ;
+endp ;
+
+/* RNDGAM - Random numbers from a General Gamma Distribution
+**
+** Usage:  x = rndgam(nr,nc,a,b,c)
+**
+** Input:  NR - scalar of row size returned matrix
+**         NC - scalar of column size returned matrix
+**         A  - matrix of shape parameters for Gamma distribution
+**         B  - matrix of scale parameters for Gamma distribution
+**         C  - matrix of location parameters for Gamma distribution
+**             (ExE conformable with RxC matrix)
+**
+** Output: X - R X C matrix of random numbers ~ Gamma(a,b,c)
+*/
+
+proc rndgam(nr,nc,a,b,c) ;
+     if not(a > 0) ;
+        errorlog "ERROR: RNDG - Shape parameter, A, is not positive" ;
+        retp(error(99)) ;
+     endif ;
+     retp(b.*invcdfg(rndu(nr,nc),a) + c) ;
+   endp ;
